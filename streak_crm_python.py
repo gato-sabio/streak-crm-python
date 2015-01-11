@@ -88,4 +88,4 @@ class StreakConnection:
             return api_get(self, 'pipelines/' + pipeline_key)
 
 if __name__ == '__main__':
-    pass
+    crm = StreakConnection()
