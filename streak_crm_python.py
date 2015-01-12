@@ -36,6 +36,10 @@ class StreakConnection:
         self.user = self.User(self)
         self.pipeline = self.Pipeline(self)
 
+    def __repr__(self):
+        return '<Connection Obj %s>' % self.settings.api_key
+
+
     def get_api_data(self, api_path: str):
         api_full_path = self.settings.api_endpoint + api_path
         print('[API GET]', api_full_path)
@@ -48,11 +52,11 @@ class StreakConnection:
             result = json.loads(result.text)
         return result
 
-    def put_api_data(self, api_path: str, data_dict):
+    def put_api_data(self, api_path: str, settings: dict):
         api_full_path = self.settings.api_endpoint + api_path
         print('[API PUT]', api_full_path)
         try:
-            result = requests.put(api_full_path, data=data_dict, auth=HTTPBasicAuth(self.settings.api_key, ''))
+            result = requests.put(api_full_path, data=settings, auth=HTTPBasicAuth(self.settings.api_key, ''))
         except requests.HTTPError:
             print('[HTTP PUT] Error')
             exit()
@@ -67,6 +71,19 @@ class StreakConnection:
             result = requests.delete(api_full_path, auth=HTTPBasicAuth(self.settings.api_key, ''))
         except requests.HTTPError:
             print('[HTTP DELETE] Error')
+            exit()
+        else:
+            result = json.loads(result.text)
+        return result
+
+    def post_api_data(self, api_path: str, settings: json):
+        api_full_path = self.settings.api_endpoint + api_path
+        print('[API POST]', api_full_path)
+        try:
+            result = requests.post(api_full_path, data=settings, auth=HTTPBasicAuth(self.settings.api_key, ''),
+                                   headers={'Content-Type': 'application/json'})
+        except requests.HTTPError:
+            print('[HTTP POST] Error')
             exit()
         else:
             result = json.loads(result.text)
@@ -110,9 +127,11 @@ class StreakConnection:
     class Pipeline:
         def __init__(self, streak_connection):
             self.streak_connection = streak_connection
-            self.name = 'not received yet'
+            self.name = ''
+            self.pipelineKey = ''
 
         def __repr__(self):
+            # TODO return self via update?
             return '<Pipeline Obj: %s>' % self.name
 
         @property
@@ -124,6 +143,9 @@ class StreakConnection:
             return pipelines_list
 
         def get(self, pipeline_key: str):
+            if not pipeline_key:
+                raise Exception('empty pipeline key')
+
             pipeline_dict = api_get(self, 'pipelines/' + pipeline_key)
 
             if 'success' in pipeline_dict.keys():
@@ -139,18 +161,45 @@ class StreakConnection:
             if 'success' in new_pipeline.keys():
                 raise Exception(new_pipeline['error'])
 
-            print('[API PUT] New pipeline created with pipelineKey', new_pipeline['pipelineKey'])
+            print('[API PUT] New my_pipeline created with pipelineKey', new_pipeline['pipelineKey'])
 
             return self.get(new_pipeline['pipelineKey'])
 
-        def delete(self, pipeline_key: str):
-            api_path = 'pipelines/' + pipeline_key
+        def delete(self, pipeline_key=''):
+            if 'pipelineKey' in self.__dict__:
+                api_path = 'pipelines/' + self.pipelineKey
+            elif pipeline_key != '':
+                api_path = 'pipelines/' + pipeline_key
+            else:
+                raise Exception("[!] Can't find my_pipeline key neither in instance nor in parameters")
+
             delete_result = self.streak_connection.delete_api_data(api_path)
 
             if not delete_result['success']:
                 raise Exception('[HTTP DELETE] Failed to delete')
             else:
                 print('[HTTP DELETE] Delete OK')
+
+        def update(self, settings: str, pipeline_key=''):
+            if 'pipelineKey' in self.__dict__:
+                api_path = 'pipelines/' + self.pipelineKey
+            elif pipeline_key != '':
+                api_path = 'pipelines/' + pipeline_key
+            else:
+                raise Exception("[!] Can't find my_pipeline key neither in instance nor in parameters")
+
+            pipeline_to_update = self.streak_connection.post_api_data(api_path, json.dumps(settings))
+
+            if 'success' in pipeline_to_update.keys():
+                raise Exception(pipeline_to_update['error'])
+
+            print('[API POST] Pipeline updated')
+
+            updated_pipeline = self.get(pipeline_to_update['pipelineKey'])
+            self.name = updated_pipeline.name
+
+            return updated_pipeline
+
 
 if __name__ == '__main__':
     pass
