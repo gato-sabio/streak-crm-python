@@ -14,7 +14,7 @@ def flush_attributes(obj):
     return obj
 
 
-def write_attributes(attr_dict, obj):
+def create_attrs(attr_dict, obj):
     """
     Makes dict items obj attributes
     :param attr_dict:
@@ -38,7 +38,7 @@ class StreakConnection:
 
     def read_api_data(self, api_path: str):
         api_full_path = self.settings.api_endpoint + api_path
-        print(api_full_path)
+        print('[API]', api_full_path)
         try:
             result = requests.get(api_full_path, auth=HTTPBasicAuth(self.settings.api_key, ''))
         except requests.HTTPError:
@@ -57,13 +57,15 @@ class StreakConnection:
         def __init__(self, streak_connection):
             self.streak_connection = streak_connection
 
+        def __repr__(self):
+            return '<User Obj: %s >' % self.displayName
+
         @property
         def me(self):
-            flush_attributes(self)
             request_path = 'users/me'
             attr_dict = api_get(self, request_path)
-            # if 'attr_dict'
-            return write_attributes(attr_dict, self)
+            new_user_instance = self.__class__(self.streak_connection)
+            return create_attrs(attr_dict, new_user_instance)
 
         def get(self, user_key):
             """
@@ -71,10 +73,14 @@ class StreakConnection:
             :param user_key:
             :return:
             """
-            flush_attributes(self)
             request_path = 'users/' + user_key
             attr_dict = api_get(self, request_path)
-            return write_attributes(attr_dict, self)
+
+            if 'success' in attr_dict.keys():
+                raise Exception(attr_dict['error'])
+
+            new_user_instance = self.__class__(self.streak_connection)
+            return create_attrs(attr_dict, new_user_instance)
 
     class Pipeline:
         def __init__(self, streak_connection):
@@ -88,4 +94,4 @@ class StreakConnection:
             return api_get(self, 'pipelines/' + pipeline_key)
 
 if __name__ == '__main__':
-    crm = StreakConnection()
+    pass
