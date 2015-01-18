@@ -4,7 +4,10 @@ import json
 import requests
 from requests.auth import HTTPBasicAuth
 
-from keys import TEST_API_KEY
+try:
+    from keys import TEST_API_KEY
+except:
+    TEST_API_KEY = 'YOU_API_KEY_HERE'
 
 
 def flush_attributes(obj):
@@ -14,7 +17,7 @@ def flush_attributes(obj):
     return obj
 
 
-def add_attributes(attr_dict, obj):
+def add_attributes(attr_dict: dict, obj: object):
     """
     Takes obj and dict, creates obj properties as dict keys:values , returns obj updated
     # >>> add_attributes({'fox_count': 15}, animal_counter)
@@ -38,7 +41,7 @@ class StreakConnection:
         self.settings = self.Settings(api_key)
 
     def __repr__(self):
-        return '<StreakConnection Object: %>'
+        return '<Streak Connection Object>'
 
     class Settings:
         def __init__(self, api_key, api_endpoint='https://www.streak.com/api/v1/'):
@@ -99,7 +102,7 @@ class StreakConnection:
             result = json.loads(result.text)
         return result
 
-    def post_api_data(self, api_path: str, settings: json):
+    def post_api_data(self, api_path: str, settings: dict):
         """
         Merges api_endpoint with api_path and sends POST request
         :param api_path: string
@@ -109,7 +112,7 @@ class StreakConnection:
         api_full_path = self.settings.api_endpoint + api_path
         print('[API POST]', api_full_path)
         try:
-            result = requests.post(api_full_path, data=settings, auth=HTTPBasicAuth(self.settings.api_key, ''),
+            result = requests.post(api_full_path, data=json.dumps(settings), auth=HTTPBasicAuth(self.settings.api_key, ''),
                                    headers={'Content-Type': 'application/json'})
         except requests.HTTPError:
             print('[HTTP POST] Error')
@@ -205,7 +208,7 @@ class StreakConnection:
             print('Pipeline deleted')
 
     def pipeline_edit(self, pipeline_key: str, pipeline_params: dict):
-        pipeline_update_result = self.post_api_data('pipelines/' + pipeline_key, json.dumps(pipeline_params))
+        pipeline_update_result = self.post_api_data('pipelines/' + pipeline_key, pipeline_params)
 
         if 'success' in pipeline_update_result.keys():
             raise Exception(pipeline_update_result['error'])
@@ -275,14 +278,59 @@ class StreakConnection:
             print('Box deleted')
 
     def box_edit(self, box_key: str, box_params: dict):
-        box_update_result = self.post_api_data('boxes/' + box_key, json.dumps(box_params))
+        box_edit_result = self.post_api_data('boxes/' + box_key, box_params)
 
-        if 'success' in box_update_result.keys():
-            raise Exception(box_update_result['error'])
+        if 'success' in box_edit_result.keys():
+            raise Exception(box_edit_result['error'])
 
         print('Box updated')
-        updated_box = self.box_get(box_update_result['boxKey'])
+        updated_box = self.box_get(box_edit_result['boxKey'])
         return updated_box
+
+    def stage_get_all_in_pipeline(self, pipeline_key: str):
+        stages_list = []
+        stages_data = self.get_api_data('pipelines/%s/stages' % pipeline_key)
+        for stage_data in stages_data.values():
+            stages_list.append(add_attributes(stage_data, Stage(self, pipeline_key)))
+        return stages_list
+
+    def stage_get_specific_in_pipeline(self, pipeline_key: str, stage_key: str):
+        stage_data = self.get_api_data('pipelines/%s/stages/%s' % (pipeline_key, stage_key))
+
+        if 'success' in stage_data.keys():
+            raise Exception(stage_data['error'])
+
+        stage = add_attributes(stage_data, Stage(self, pipeline_key))
+        return stage
+
+    def stage_create_in_pipeline(self, pipeline_key: str, stage_params: dict):
+        stage_data = self.put_api_data('pipelines/%s/stages' % pipeline_key, stage_params)
+
+        if 'success' in stage_data.keys():
+            raise Exception(stage_data['error'])
+
+        new_stage = self.stage_get_specific_in_pipeline(pipeline_key, stage_data['key'])
+
+        print('New Stage created')
+        return new_stage
+
+    def stage_delete_in_pipeline(self, pipeline_key: str, stage_key: str):
+        response_on_delete = self.delete_api_data('pipelines/%s/stages/%s' % (pipeline_key, stage_key))
+
+        if not response_on_delete['success']:
+            raise Exception('Failed to delete Stage')
+        else:
+            print('Stage deleted')
+
+    def stage_edit_in_pipeline(self, pipeline_key: str, stage_key: str, stage_params: dict):
+        stage_edit_result = self.post_api_data('pipelines/%s/stages/%s' % (pipeline_key, stage_key), stage_params)
+
+        if 'success' in stage_edit_result.keys():
+            raise Exception(stage_edit_result['error'])
+
+        print('Stage edited')
+        stage_edited = self.stage_get_specific_in_pipeline(pipeline_key, stage_edit_result['key'])
+        return stage_edited
 
 
 class User:
@@ -291,7 +339,7 @@ class User:
         self.displayName = 'n/a'
 
     def __repr__(self):
-        return '<User: %s>' % self.displayName
+        return '<User: \'%s>\'' % self.displayName
 
         # def reload(self):
         # print('Updating User...'),
@@ -307,7 +355,10 @@ class Pipeline:
         self.pipelineKey = ''
 
     def __repr__(self):
-        return '<Pipeline: %s>' % self.name
+        return '<Pipeline: \'%s>\'' % self.name
+
+    def delete_self(self):
+        self.streak_connection.pipeline_delete(self.pipelineKey)
 
         # def reload(self):
         # print('Updating Pipeline...'),
@@ -323,11 +374,23 @@ class Box:
         self.pipelineKey = ''
 
     def __repr__(self):
-        return '<Box: %s>' % self.name
+        return '<Box: \'%s>\'' % self.name
 
     def delete_self(self):
         self.streak_connection.box_delete(self.boxKey)
 
+
+class Stage:
+    def __init__(self, streak_connection, pipeline_key):
+        self.streak_connection = streak_connection
+        self.pipeline_key = pipeline_key
+        self.name = ''
+
+    def __repr__(self):
+        return '<Stage: \'%s>\'' % self.name
+
+    def delete_self(self):
+        self.streak_connection.stage_delete_in_pipeline(self.pipeline_key, self.key)
 
 if __name__ == '__main__':
     pass

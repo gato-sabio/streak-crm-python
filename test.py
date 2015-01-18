@@ -208,3 +208,60 @@ class TestCreateDeleteUpdateBoxes(unittest.TestCase):
         for box in self.boxes:
             box.delete_self()
         self.streak.pipeline_delete(self.pipeline.pipelineKey)
+
+
+class TestCreateDeleteUpdateStages(unittest.TestCase):
+    def setUp(self):
+        """
+        Creates, updates, deletes stages
+        """
+        print('Creating connection...')
+        self.streak = StreakConnection()
+        print('...pipeline...')
+        self.pipeline = self.streak.pipeline_create(
+            {
+                'name': 'pipeline to test stages',
+                'description': 'test description',
+                'orgWide': True,
+                'fieldNames': 'name, date, memo',
+                'fieldTypes': 'PERSON, DATE, TEXT_INPUT',
+                'stageNames': 'Cold Call, Meeting, Contract'
+            }
+        )
+        print('...done.')
+
+    def test_box_create_and_update(self):
+        stage_names = ['Cold Call', 'Meeting', 'Contract']
+        pip_key = self.pipeline.pipelineKey
+
+        # get all stages in pipeline
+        all_stages = self.streak.stage_get_all_in_pipeline(pip_key)
+        for stage in all_stages:
+            self.assertIn(stage.name, stage_names)
+
+        # get any specific stage in pipeline by key
+        any_stage_key = random.choice(all_stages).key
+        any_stage = self.streak.stage_get_specific_in_pipeline(pip_key, any_stage_key)
+        self.assertIn(any_stage.name, stage_names)
+
+        # create stage and check if it is there
+        new_stage = self.streak.stage_create_in_pipeline(pip_key, {'name': 'stage #3'})
+        self.assertEqual(self.streak.stage_get_specific_in_pipeline(pip_key, new_stage.key).name, new_stage.name)
+
+        # edit stage
+        edited_stage = self.streak.stage_edit_in_pipeline(pip_key, new_stage.key, {'name': 'edited name'})
+        self.assertEqual(edited_stage.name, 'edited name')
+
+        # delete stage
+        stage_key = edited_stage.key
+        print('deleting stage key #', stage_key)
+        print(edited_stage.__dict__)
+        edited_stage.delete_self()
+        with self.assertRaisesRegex(Exception, 'Illegal Argument Exception in GetEntities, usually a key issue'):
+            self.streak.stage_get_specific_in_pipeline(pip_key, stage_key)
+
+
+    def tearDown(self):
+        print('Cleaning up...')
+        self.pipeline.delete_self()
+        print('...done.')
