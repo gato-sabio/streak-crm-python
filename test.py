@@ -69,7 +69,7 @@ class TestUsers(unittest.TestCase):
         # def test_user_update(self):
         # me = self.streak.user_get_me()
         # me.reload()
-        #     # self.assNotIs
+        # # self.assNotIs
 
 
 class TestCreateDeleteUpdatePipelines(unittest.TestCase):
@@ -171,23 +171,40 @@ class TestCreateDeleteUpdateBoxes(unittest.TestCase):
             'notes': 'some notes',
         }
 
-        new_box = self.streak.box_create(self.pipeline.pipelineKey, box_settings)
+        # create box_1
+        new_box_1 = self.streak.box_create(self.pipeline.pipelineKey, box_settings)
 
-        self.assertEqual(new_box.name, box_settings['name'])
-        self.assertEqual(new_box.notes, box_settings['notes'])
+        # check if box params are updated on server
+        self.assertEqual(new_box_1.name, box_settings['name'])
+        self.assertEqual(new_box_1.notes, box_settings['notes'])
 
         updated_settings = {
-            'name': 'new_box_2',
+            'name': 'new_box_1 changed',
             'notes': 'some notes 2'
         }
 
-        self.updated_box = self.streak.box_edit(new_box.boxKey, updated_settings)
+        # update params
+        new_box_1 = self.streak.box_edit(new_box_1.boxKey, updated_settings)
 
-        self.assertEqual(self.updated_box.name, updated_settings['name'])
-        self.assertEqual(self.updated_box.notes, updated_settings['notes'])
+        # check if box params are updated on server
+        self.assertEqual(new_box_1.name, updated_settings['name'])
+        self.assertEqual(new_box_1.notes, updated_settings['notes'])
 
-        self.streak.box_delete(new_box.boxKey)
+        # create box_2
+        new_box_2 = self.streak.box_create(self.pipeline.pipelineKey, {'name': 'another box', 'notes': 'somenotes'})
+
+        self.boxes = self.streak.box_get_all()
+        # print(self.boxes[0].__dict__)
+        boxes_names = [box.name for box in self.boxes]
+        boxes_notes = [box.notes for box in self.boxes]
+
+        self.assertIn(new_box_1.name, boxes_names)
+        self.assertIn(new_box_2.name, boxes_names)
+        self.assertIn(new_box_1.notes, boxes_notes)
+        self.assertIn(new_box_2.notes, boxes_notes)
 
 
     def tearDown(self):
+        for box in self.boxes:
+            box.delete_self()
         self.streak.pipeline_delete(self.pipeline.pipelineKey)

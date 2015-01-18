@@ -1,4 +1,4 @@
-# -*- coding: utf-8 -*-
+  # -*- coding: utf-8 -*-
 
 import json
 import requests
@@ -293,11 +293,11 @@ class User:
     def __repr__(self):
         return '<User: %s>' % self.displayName
 
-    # def reload(self):
-    #     print('Updating User...'),
-    #     self = self.streak_connection.user_get(self.userKey)
-    #     print('...done.')
-    #     return self
+        # def reload(self):
+        # print('Updating User...'),
+        #     self = self.streak_connection.user_get(self.userKey)
+        #     print('...done.')
+        #     return self
 
 
 class Pipeline:
@@ -309,11 +309,11 @@ class Pipeline:
     def __repr__(self):
         return '<Pipeline: %s>' % self.name
 
-    # def reload(self):
-    #     print('Updating Pipeline...'),
-    #     self = self.streak_connection.pipeline_get(self.pipelineKey)
-    #     print('...done.')
-    #     return self
+        # def reload(self):
+        # print('Updating Pipeline...'),
+        #     self = self.streak_connection.pipeline_get(self.pipelineKey)
+        #     print('...done.')
+        #     return self
 
 
 class Box:
@@ -325,6 +325,8 @@ class Box:
     def __repr__(self):
         return '<Box: %s>' % self.name
 
+    def delete_self(self):
+        self.streak_connection.box_delete(self.boxKey)
 
 
 if __name__ == '__main__':
