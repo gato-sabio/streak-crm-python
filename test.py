@@ -5,6 +5,7 @@ from keys import TEST_API_KEY
 import unittest
 import random
 import string
+import datetime
 
 
 alphanumeric_range = string.ascii_lowercase + '1234567890'
@@ -65,6 +66,11 @@ class TestUsers(unittest.TestCase):
             self.assertIn(key, user.__dict__)
         self.assertNotIn('foo', user.__dict__)
 
+        # def test_user_update(self):
+        # me = self.streak.user_get_me()
+        # me.reload()
+        #     # self.assNotIs
+
 
 class TestCreateDeleteUpdatePipelines(unittest.TestCase):
     def setUp(self):
@@ -73,7 +79,7 @@ class TestCreateDeleteUpdatePipelines(unittest.TestCase):
         """
         self.streak = StreakConnection()
 
-    def test_create(self):
+    def test_pipeline_create_and_update(self):
         self.settings = {
             'name': 'test name',
             'description': 'test description',
@@ -82,8 +88,7 @@ class TestCreateDeleteUpdatePipelines(unittest.TestCase):
             'fieldTypes': 'PERSON, DATE, TEXT_INPUT',
             'stageNames': 'Cold Call, Meeting, Contract'
         }
-        self.new_pipeline = self.streak.pipeline_create(pipeline_params=self.settings)
-        # print(self.new_pipeline.__dict__)
+        self.new_pipeline = self.streak.pipeline_create(self.settings)
         self.assertIsNotNone(self.new_pipeline.pipelineKey)
 
         self.assertEqual(self.new_pipeline.name, self.settings['name'])
@@ -93,17 +98,13 @@ class TestCreateDeleteUpdatePipelines(unittest.TestCase):
         self.updated_settings = {
             'name': 'test name 2',
             'description': 'test description 2',
-            'orgWide': False,
-            'fieldNames': 'name 2, date 2, memo',
-            'fieldTypes': 'PERSON, DATE, TEXT_INPUT',
-            'stageNames': 'Cold Call 2, Meeting 2, Contract 2'
         }
 
-        self.streak.pipeline_update(self.new_pipeline.pipelineKey, self.updated_settings)
+        self.updated_pipeline = self.streak.pipeline_edit(self.new_pipeline.pipelineKey, self.updated_settings)
+        # print(self.updated_pipeline.__dict__)
 
-        self.assertEqual(self.new_pipeline.name, self.settings['name'])
-        self.assertEqual(self.new_pipeline.description, self.settings['description'])
-        self.assertEqual(self.new_pipeline.orgWide, self.settings['orgWide'])
+        self.assertEqual(self.updated_pipeline.name, self.updated_settings['name'])
+        self.assertEqual(self.updated_pipeline.description, self.updated_settings['description'])
 
 
     def tearDown(self):
@@ -136,4 +137,57 @@ class TestCreateDeleteUpdatePipelinesWithInvalidParams(unittest.TestCase):
             self.new_pipeline = self.streak.pipeline_delete('12345')
 
         with self.assertRaisesRegex(Exception, 'existing entity does not exist'):
-            self.new_pipeline = self.streak.pipeline_update('12345', self.settings)
+            self.new_pipeline = self.streak.pipeline_edit('12345', self.settings)
+
+
+class TestCreateDeleteUpdateBoxes(unittest.TestCase):
+    def setUp(self):
+        """
+        Creates, updates, deletes Boxes
+        """
+        self.streak = StreakConnection()
+
+
+class TestCreateDeleteUpdateBoxes(unittest.TestCase):
+    def setUp(self):
+        """
+        Creates, updates, deletes pipelines
+        """
+        self.streak = StreakConnection()
+        self.pipeline = self.streak.pipeline_create(
+            {
+                'name': 'pipeline to test box',
+                'description': 'test description',
+                'orgWide': True,
+                'fieldNames': 'name, date, memo',
+                'fieldTypes': 'PERSON, DATE, TEXT_INPUT',
+                'stageNames': 'Cold Call, Meeting, Contract'
+            }
+        )
+
+    def test_box_create_and_update(self):
+        box_settings = {
+            'name': 'new_box',
+            'notes': 'some notes',
+        }
+
+        new_box = self.streak.box_create(self.pipeline.pipelineKey, box_settings)
+
+        self.assertEqual(new_box.name, box_settings['name'])
+        self.assertEqual(new_box.notes, box_settings['notes'])
+
+        updated_settings = {
+            'name': 'new_box_2',
+            'notes': 'some notes 2'
+        }
+
+        self.updated_box = self.streak.box_edit(new_box.boxKey, updated_settings)
+
+        self.assertEqual(self.updated_box.name, updated_settings['name'])
+        self.assertEqual(self.updated_box.notes, updated_settings['notes'])
+
+        self.streak.box_delete(new_box.boxKey)
+
+
+    def tearDown(self):
+        self.streak.pipeline_delete(self.pipeline.pipelineKey)

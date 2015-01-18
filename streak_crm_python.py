@@ -204,15 +204,85 @@ class StreakConnection:
         else:
             print('Pipeline deleted')
 
-    def pipeline_update(self, pipeline_key: str, pipeline_params: dict):
-            pipeline_update_result = self.post_api_data('pipelines/' + pipeline_key, json.dumps(pipeline_params))
+    def pipeline_edit(self, pipeline_key: str, pipeline_params: dict):
+        pipeline_update_result = self.post_api_data('pipelines/' + pipeline_key, json.dumps(pipeline_params))
 
-            if 'success' in pipeline_update_result.keys():
-                raise Exception(pipeline_update_result['error'])
+        if 'success' in pipeline_update_result.keys():
+            raise Exception(pipeline_update_result['error'])
 
-            print('Pipeline updated')
-            updated_pipeline = self.pipeline_get(pipeline_update_result['pipelineKey'])
-            return updated_pipeline
+        print('Pipeline updated')
+        updated_pipeline = self.pipeline_get(pipeline_update_result['pipelineKey'])
+        return updated_pipeline
+
+    def box_get_all(self):
+        boxes_list = []
+        boxes_data = self.get_api_data('boxes/')
+        for box_data in boxes_data:
+            boxes_list.append(add_attributes(box_data, Box(self)))
+        return boxes_list
+
+    def box_get_all_in_pipeline(self, pipeline_key: str):
+        boxes_list = []
+        boxes_data = self.get_api_data('pipelines/%s/boxes' % pipeline_key)
+        for box_data in boxes_data:
+            boxes_list.append(add_attributes(box_data, Box(self)))
+        return boxes_list
+
+    def box_get(self, box_key: str):
+        """
+        Gets Box by key
+        :param box_key:
+        :return: Pipeline instance
+        """
+        if not box_key:
+            raise Exception('[!] Empty box key, please supply one')
+
+        box_data = self.get_api_data('boxes/' + box_key)
+
+        if 'success' in box_data.keys():
+            raise Exception(box_data['error'])
+
+        box = add_attributes(box_data, Box(self))
+        return box
+
+    def box_create(self, pipeline_key: str, box_params: dict):
+        """
+        Creates and returns Box with given params
+        :param box_params: dict of params
+        :return: newly created Pipeline instance
+        """
+        box_data = self.put_api_data('pipelines/%s/boxes' % pipeline_key, box_params)
+
+        if 'success' in box_data.keys():
+            raise Exception(box_data['error'])
+
+        new_box = self.box_get(box_data['boxKey'])
+
+        print('New Box created')
+        return new_box
+
+    def box_delete(self, box_key: str):
+        """
+        Deletes Box by key
+        :param box_key:
+        :return:
+        """
+        response_on_delete = self.delete_api_data('boxes/' + box_key)
+
+        if not response_on_delete['success']:
+            raise Exception('Failed to delete Box')
+        else:
+            print('Box deleted')
+
+    def box_edit(self, box_key: str, box_params: dict):
+        box_update_result = self.post_api_data('boxes/' + box_key, json.dumps(box_params))
+
+        if 'success' in box_update_result.keys():
+            raise Exception(box_update_result['error'])
+
+        print('Box updated')
+        updated_box = self.box_get(box_update_result['boxKey'])
+        return updated_box
 
 
 class User:
@@ -222,6 +292,12 @@ class User:
 
     def __repr__(self):
         return '<User: %s>' % self.displayName
+
+    # def reload(self):
+    #     print('Updating User...'),
+    #     self = self.streak_connection.user_get(self.userKey)
+    #     print('...done.')
+    #     return self
 
 
 class Pipeline:
@@ -233,39 +309,23 @@ class Pipeline:
     def __repr__(self):
         return '<Pipeline: %s>' % self.name
 
+    # def reload(self):
+    #     print('Updating Pipeline...'),
+    #     self = self.streak_connection.pipeline_get(self.pipelineKey)
+    #     print('...done.')
+    #     return self
 
-# class Box:
-# def __init__(self, streak_connection):
-# self.streak_connection = streak_connection
-#         self.name = ''
-#         self.pipelineKey = ''
-#
-#     def __repr__(self):
-#         return '<Box Obj: %s>' % self.name
-#
-#     @property
-#     def all(self):
-#         boxes_list = []
-#         boxes_dicts = self.streak_connection.get_api_data('boxes/')
-#         for box_dict in boxes_dicts:
-#             boxes_list.append(add_attributes(box_dict, self.__class__(self.streak_connection)))
-#         return boxes_list
-#
-#     @property
-#     def all_in_pipeline(self, pipeline_key=''):
-#         if 'pipelineKey' in self.__dict__:
-#             api_path = 'pipelines/%s/boxes' % self.pipelineKey
-#         elif pipeline_key != '':
-#             api_path = 'pipelines/%s/boxes' % pipeline_key
-#         else:
-#             raise Exception("[!] Can't find new_pipeline key neither in instance nor in parameters")
-#
-#         boxes_list = []
-#         boxes_dicts = self.streak_connection.get_api_data(api_path)
-#         for box_dict in boxes_dicts:
-#             boxes_list.append(add_attributes(box_dict, self.__class__(self.streak_connection)))
-#         return boxes_list
-#
+
+class Box:
+    def __init__(self, streak_connection):
+        self.streak_connection = streak_connection
+        self.name = ''
+        self.pipelineKey = ''
+
+    def __repr__(self):
+        return '<Box: %s>' % self.name
+
+
 
 if __name__ == '__main__':
     pass
