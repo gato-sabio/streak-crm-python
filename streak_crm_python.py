@@ -14,34 +14,44 @@ def flush_attributes(obj):
     return obj
 
 
-def create_attrs(attr_dict, obj):
+def add_attributes(attr_dict, obj):
     """
-    Makes dict items obj attributes
-    :param attr_dict:
-    :param obj:
-    :return:
+    Takes obj and dict, creates obj properties as dict keys:values , returns obj updated
+    # >>> add_attributes({'fox_count': 15}, animal_counter)
+    # >>> animal_counter.fox_count == 15
+    # True
+    :param attr_dict: dict with attrs
+    :param obj: object
+    :return: obj updated
     """
     for key, value in attr_dict.items():
         setattr(obj, key, value)
     return obj
 
 
-def api_get(self, request_path):
-    return self.streak_connection.get_api_data(request_path)
+# def api_get(self, request_path):
+# return self.streak_connection.get_api_data(request_path)
 
 
 class StreakConnection:
     def __init__(self, api_key=TEST_API_KEY):
         self.settings = self.Settings(api_key)
-        self.user = self.User(self)
-        self.pipeline = self.Pipeline(self)
-        self.box = self.Box(self)
 
     def __repr__(self):
-        return '<Connection Obj %s>' % self.settings.api_key
+        return '<StreakConnection Object: %>'
 
+    class Settings:
+        def __init__(self, api_key, api_endpoint='https://www.streak.com/api/v1/'):
+            self.api_key = api_key
+            self.api_endpoint = api_endpoint
 
     def get_api_data(self, api_path: str):
+        """
+        Merges api_endpoint with api_path and sends GET request
+        :param api_path: string
+        :return: object
+        """
+        result = None
         api_full_path = self.settings.api_endpoint + api_path
         print('[API GET]', api_full_path)
         try:
@@ -54,6 +64,12 @@ class StreakConnection:
         return result
 
     def put_api_data(self, api_path: str, settings: dict):
+        """
+        Merges api_endpoint with api_path and sends PUT request
+        :param api_path: string
+        :return: object
+        """
+        result = None
         api_full_path = self.settings.api_endpoint + api_path
         print('[API PUT]', api_full_path)
         try:
@@ -66,6 +82,12 @@ class StreakConnection:
         return result
 
     def delete_api_data(self, api_path: str):
+        """
+        Merges api_endpoint with api_path and sends DELETE request
+        :param api_path: string
+        :return: object
+        """
+        result = None
         api_full_path = self.settings.api_endpoint + api_path
         print('[API DELETE]', api_full_path)
         try:
@@ -78,6 +100,12 @@ class StreakConnection:
         return result
 
     def post_api_data(self, api_path: str, settings: json):
+        """
+        Merges api_endpoint with api_path and sends POST request
+        :param api_path: string
+        :return: object
+        """
+        result = None
         api_full_path = self.settings.api_endpoint + api_path
         print('[API POST]', api_full_path)
         try:
@@ -90,152 +118,154 @@ class StreakConnection:
             result = json.loads(result.text)
         return result
 
-    class Settings:
-        def __init__(self, api_key, api_endpoint='https://www.streak.com/api/v1/'):
-            self.api_key = api_key
-            self.api_endpoint = api_endpoint
+    def user_get_me(self):
+        """
+        Returns current authorized User (myself)
+        :return: User
+        """
+        request_path = 'users/me'
+        user_me_data = self.get_api_data(request_path)
+        # creates new User instance as assigns keys:values from server response as it's properties
+        user = add_attributes(user_me_data, User(self))
+        return user
 
-    class User:
-        def __init__(self, streak_connection):
-            self.streak_connection = streak_connection
-            self.displayName = 'not received yet'
+    def user_get(self, user_key):
+        """
+        Gets User data by userKey
+        :param user_key: string
+        :return: User
+        """
+        request_path = 'users/' + user_key
+        user_data = self.get_api_data(request_path)
 
-        def __repr__(self):
-            return '<User Obj: %s>' % self.displayName
+        # if server response has error code
+        if 'success' in user_data.keys():
+            raise Exception(user_data['error'])
 
-        @property
-        def me(self):
-            request_path = 'users/me'
-            attr_dict = self.streak_connection.get_api_data(request_path)
-            new_user_instance = self.__class__(self.streak_connection)
-            return create_attrs(attr_dict, new_user_instance)
+        user = add_attributes(user_data, User(self))
+        return user
 
-        def get(self, user_key):
-            """
-            Gets User data by userKey
-            :param user_key:
-            :return:
-            """
-            request_path = 'users/' + user_key
-            attr_dict = self.streak_connection.get_api_data(request_path)
+    def pipeline_get_all(self):
+        """
+        Gets all pipelines
+        :return: list of Pipelines objects
+        """
+        pipelines_list = []
+        request_path = 'pipelines/'
+        pipelines_data = self.get_api_data('pipelines/')
+        for pipeline_dict in pipelines_data:
+            pipelines_list.append(add_attributes(pipeline_dict, Pipeline(self)))
+        return pipelines_list
 
-            if 'success' in attr_dict.keys():
-                raise Exception(attr_dict['error'])
+    def pipeline_get(self, pipeline_key: str):
+        """
+        Gets Pipeline by key
+        :param pipeline_key:
+        :return: Pipeline instance
+        """
+        if not pipeline_key:
+            raise Exception('[!] Empty pipeline key, please supply one')
 
-            new_user_instance = self.__class__(self.streak_connection)
-            return create_attrs(attr_dict, new_user_instance)
+        pipeline_data = self.get_api_data('pipelines/' + pipeline_key)
 
-    class Pipeline:
-        def __init__(self, streak_connection):
-            self.streak_connection = streak_connection
-            self.name = ''
-            self.pipelineKey = ''
+        if 'success' in pipeline_data.keys():
+            raise Exception(pipeline_data['error'])
 
-        def __repr__(self):
-            # TODO return self via update?
-            return '<Pipeline Obj: %s>' % self.name
+        pipeline = add_attributes(pipeline_data, Pipeline(self))
+        return pipeline
 
-        @property
-        def all(self):
-            pipelines_list = []
-            request_path = 'pipelines/'
-            pipeline_dicts = self.streak_connection.get_api_data('pipelines/')
-            for pipeline_dict in pipeline_dicts:
-                pipelines_list.append(create_attrs(pipeline_dict, self.__class__(self.streak_connection)))
-            return pipelines_list
+    def pipeline_create(self, pipeline_params: dict):
+        """
+        Creates and returns Pipeline with given params
+        :param pipeline_params: dict of params
+        :return: newly created Pipeline instance
+        """
+        pipeline_data = self.put_api_data('pipelines/', pipeline_params)
 
-        def get(self, pipeline_key: str):
-            if not pipeline_key:
-                raise Exception('empty pipeline key')
+        if 'success' in pipeline_data.keys():
+            raise Exception(pipeline_data['error'])
 
-            pipeline_dict = api_get(self, 'pipelines/' + pipeline_key)
+        new_pipeline = self.pipeline_get(pipeline_data['pipelineKey'])
 
-            if 'success' in pipeline_dict.keys():
-                raise Exception(pipeline_dict['error'])
+        print('New Pipeline created')
 
-            new_pipeline_instance = create_attrs(pipeline_dict, self.__class__(self.streak_connection))
-            return new_pipeline_instance
+        return new_pipeline
 
-        def create(self, settings: dict):
-            api_path = 'pipelines/'
-            new_pipeline = self.streak_connection.put_api_data(api_path, settings)
+    def pipeline_delete(self, pipeline_key: str):
+        """
+        Deletes pipeline by key
+        :param pipeline_key:
+        :return:
+        """
+        response_on_delete = self.delete_api_data('pipelines/' + pipeline_key)
 
-            if 'success' in new_pipeline.keys():
-                raise Exception(new_pipeline['error'])
+        if not response_on_delete['success']:
+            raise Exception('Failed to delete Pipeline')
+        else:
+            print('Pipeline deleted')
 
-            print('[API PUT] New my_pipeline created with pipelineKey', new_pipeline['pipelineKey'])
+    def pipeline_update(self, pipeline_key: str, pipeline_params: dict):
+            pipeline_update_result = self.post_api_data('pipelines/' + pipeline_key, json.dumps(pipeline_params))
 
-            return self.get(new_pipeline['pipelineKey'])
+            if 'success' in pipeline_update_result.keys():
+                raise Exception(pipeline_update_result['error'])
 
-        def delete(self, pipeline_key=''):
-            if 'pipelineKey' in self.__dict__:
-                api_path = 'pipelines/' + self.pipelineKey
-            elif pipeline_key != '':
-                api_path = 'pipelines/' + pipeline_key
-            else:
-                raise Exception("[!] Can't find my_pipeline key neither in instance nor in parameters")
-
-            delete_result = self.streak_connection.delete_api_data(api_path)
-
-            if not delete_result['success']:
-                raise Exception('[HTTP DELETE] Failed to delete')
-            else:
-                print('[HTTP DELETE] Delete OK')
-
-        def update(self, settings: dict, pipeline_key=''):
-            if 'pipelineKey' in self.__dict__:
-                api_path = 'pipelines/' + self.pipelineKey
-            elif pipeline_key != '':
-                api_path = 'pipelines/' + pipeline_key
-            else:
-                raise Exception("[!] Can't find my_pipeline key neither in instance nor in parameters")
-
-            pipeline_to_update = self.streak_connection.post_api_data(api_path, json.dumps(settings))
-
-            if 'success' in pipeline_to_update.keys():
-                raise Exception(pipeline_to_update['error'])
-
-            print('[API POST] Pipeline updated')
-
-            updated_pipeline = self.get(pipeline_to_update['pipelineKey'])
-            self.name = updated_pipeline.name
-
+            print('Pipeline updated')
+            updated_pipeline = self.pipeline_get(pipeline_update_result['pipelineKey'])
             return updated_pipeline
 
-    class Box:
-        def __init__(self, streak_connection):
-            self.streak_connection = streak_connection
-            self.name = ''
-            self.pipelineKey = ''
 
-        def __repr__(self):
-            return '<Box Obj: %s>' % self.name
+class User:
+    def __init__(self, streak_connection):
+        self.streak_connection = streak_connection
+        self.displayName = 'n/a'
 
-        @property
-        def all(self):
-            boxes_list = []
-            boxes_dicts = self.streak_connection.get_api_data('boxes/')
-            for box_dict in boxes_dicts:
-                boxes_list.append(create_attrs(box_dict, self.__class__(self.streak_connection)))
-            return boxes_list
-
-        @property
-        def all_in_pipeline(self, pipeline_key=''):
-            if 'pipelineKey' in self.__dict__:
-                api_path = 'pipelines/%s/boxes' % self.pipelineKey
-            elif pipeline_key != '':
-                api_path = 'pipelines/%s/boxes' % pipeline_key
-            else:
-                raise Exception("[!] Can't find my_pipeline key neither in instance nor in parameters")
-
-            boxes_list = []
-            boxes_dicts = self.streak_connection.get_api_data(api_path)
-            for box_dict in boxes_dicts:
-                boxes_list.append(create_attrs(box_dict, self.__class__(self.streak_connection)))
-            return boxes_list
+    def __repr__(self):
+        return '<User: %s>' % self.displayName
 
 
+class Pipeline:
+    def __init__(self, streak_connection):
+        self.streak_connection = streak_connection
+        self.name = ''
+        self.pipelineKey = ''
 
+    def __repr__(self):
+        return '<Pipeline: %s>' % self.name
+
+
+# class Box:
+# def __init__(self, streak_connection):
+# self.streak_connection = streak_connection
+#         self.name = ''
+#         self.pipelineKey = ''
+#
+#     def __repr__(self):
+#         return '<Box Obj: %s>' % self.name
+#
+#     @property
+#     def all(self):
+#         boxes_list = []
+#         boxes_dicts = self.streak_connection.get_api_data('boxes/')
+#         for box_dict in boxes_dicts:
+#             boxes_list.append(add_attributes(box_dict, self.__class__(self.streak_connection)))
+#         return boxes_list
+#
+#     @property
+#     def all_in_pipeline(self, pipeline_key=''):
+#         if 'pipelineKey' in self.__dict__:
+#             api_path = 'pipelines/%s/boxes' % self.pipelineKey
+#         elif pipeline_key != '':
+#             api_path = 'pipelines/%s/boxes' % pipeline_key
+#         else:
+#             raise Exception("[!] Can't find new_pipeline key neither in instance nor in parameters")
+#
+#         boxes_list = []
+#         boxes_dicts = self.streak_connection.get_api_data(api_path)
+#         for box_dict in boxes_dicts:
+#             boxes_list.append(add_attributes(box_dict, self.__class__(self.streak_connection)))
+#         return boxes_list
+#
 
 if __name__ == '__main__':
     pass
