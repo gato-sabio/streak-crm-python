@@ -35,6 +35,7 @@ class StreakConnection:
         self.settings = self.Settings(api_key)
         self.user = self.User(self)
         self.pipeline = self.Pipeline(self)
+        self.box = self.Box(self)
 
     def __repr__(self):
         return '<Connection Obj %s>' % self.settings.api_key
@@ -105,7 +106,7 @@ class StreakConnection:
         @property
         def me(self):
             request_path = 'users/me'
-            attr_dict = api_get(self, request_path)
+            attr_dict = self.streak_connection.get_api_data(request_path)
             new_user_instance = self.__class__(self.streak_connection)
             return create_attrs(attr_dict, new_user_instance)
 
@@ -116,7 +117,7 @@ class StreakConnection:
             :return:
             """
             request_path = 'users/' + user_key
-            attr_dict = api_get(self, request_path)
+            attr_dict = self.streak_connection.get_api_data(request_path)
 
             if 'success' in attr_dict.keys():
                 raise Exception(attr_dict['error'])
@@ -137,7 +138,8 @@ class StreakConnection:
         @property
         def all(self):
             pipelines_list = []
-            pipeline_dicts = api_get(self, 'pipelines/')
+            request_path = 'pipelines/'
+            pipeline_dicts = self.streak_connection.get_api_data('pipelines/')
             for pipeline_dict in pipeline_dicts:
                 pipelines_list.append(create_attrs(pipeline_dict, self.__class__(self.streak_connection)))
             return pipelines_list
@@ -180,7 +182,7 @@ class StreakConnection:
             else:
                 print('[HTTP DELETE] Delete OK')
 
-        def update(self, settings: str, pipeline_key=''):
+        def update(self, settings: dict, pipeline_key=''):
             if 'pipelineKey' in self.__dict__:
                 api_path = 'pipelines/' + self.pipelineKey
             elif pipeline_key != '':
@@ -199,6 +201,40 @@ class StreakConnection:
             self.name = updated_pipeline.name
 
             return updated_pipeline
+
+    class Box:
+        def __init__(self, streak_connection):
+            self.streak_connection = streak_connection
+            self.name = ''
+            self.pipelineKey = ''
+
+        def __repr__(self):
+            return '<Box Obj: %s>' % self.name
+
+        @property
+        def all(self):
+            boxes_list = []
+            boxes_dicts = self.streak_connection.get_api_data('boxes/')
+            for box_dict in boxes_dicts:
+                boxes_list.append(create_attrs(box_dict, self.__class__(self.streak_connection)))
+            return boxes_list
+
+        @property
+        def all_in_pipeline(self, pipeline_key=''):
+            if 'pipelineKey' in self.__dict__:
+                api_path = 'pipelines/%s/boxes' % self.pipelineKey
+            elif pipeline_key != '':
+                api_path = 'pipelines/%s/boxes' % pipeline_key
+            else:
+                raise Exception("[!] Can't find my_pipeline key neither in instance nor in parameters")
+
+            boxes_list = []
+            boxes_dicts = self.streak_connection.get_api_data(api_path)
+            for box_dict in boxes_dicts:
+                boxes_list.append(create_attrs(box_dict, self.__class__(self.streak_connection)))
+            return boxes_list
+
+
 
 
 if __name__ == '__main__':
