@@ -265,3 +265,75 @@ class TestCreateDeleteUpdateStages(unittest.TestCase):
         print('Cleaning up...')
         self.pipeline.delete_self()
         print('...done.')
+
+
+class TestGetGetAllEditValues(unittest.TestCase):
+    def setUp(self):
+        """
+        Gets & updates values
+        """
+        print('Creating connection...')
+        self.streak = StreakConnection()
+        print('...pipeline...')
+        self.pipeline = self.streak.pipeline_create(
+            {
+                'name': 'pipeline to test fields/values',
+                'description': 'test description',
+                'orgWide': True,
+                'fieldNames': 'name, date, memo',
+                'fieldTypes': 'PERSON, DATE, TEXT_INPUT',
+                'stageNames': 'Cold Call, Meeting, Contract'
+            }
+        )
+        print('...box...')
+        self.box = self.streak.box_create(self.pipeline.pipelineKey, {'name': 'test box'})
+        print('...done.')
+
+    def test_value_get_get_all_edit(self):
+        pip_key = self.pipeline.pipelineKey
+        last_field = None
+
+        # get all fields in pipeline
+        field_names = ['name', 'date', 'memo']
+        fields = self.streak.field_get_all_in_pipeline(pip_key)
+        for field in fields:
+            self.assertIn(field.name, field_names)
+            last_field = field
+
+        # get specific field
+        specific_field = self.streak.field_get_specific_in_pipeline(pip_key, last_field.key)
+        self.assertEqual(specific_field.key, last_field.key)
+
+        # create field
+        new_field = self.streak.field_create_in_pipeline(pip_key, {
+            'name': 'some field',
+            'type': 'TEXT_INPUT'
+        })
+        self.assertEqual(new_field.name, 'some field')
+
+        # edit field
+        edited_field = self.streak.field_edit_in_pipeline(pip_key, new_field.key, {'name': 'another name'})
+        self.assertEqual(edited_field.name, 'another name')
+
+        # get all values
+        values = self.streak.value_get_all_in_box(self.box.key)
+        for value in values:
+            self.assertEqual(value.value, '')
+
+        # edit value & get specific value
+        edited_value = self.streak.value_edit_in_box(self.box.key, edited_field.key, {'value': 'some value'})
+        self.assertEqual(edited_value.value, 'some value')
+
+        # delete field
+        self.streak.field_delete_in_pipeline(pip_key, new_field.key)
+        with self.assertRaisesRegex(Exception, 'Illegal Argument Exception in GetEntities, usually a key issue'):
+            self.streak.field_get_specific_in_pipeline(pip_key, new_field.key)
+
+
+
+
+    def tearDown(self):
+        print('Cleaning up...')
+        self.box.delete_self()
+        self.pipeline.delete_self()
+        print('...done.')

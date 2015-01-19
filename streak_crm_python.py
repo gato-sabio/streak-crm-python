@@ -1,4 +1,4 @@
-  # -*- coding: utf-8 -*-
+# -*- coding: utf-8 -*-
 
 import json
 import requests
@@ -112,7 +112,8 @@ class StreakConnection:
         api_full_path = self.settings.api_endpoint + api_path
         print('[API POST]', api_full_path)
         try:
-            result = requests.post(api_full_path, data=json.dumps(settings), auth=HTTPBasicAuth(self.settings.api_key, ''),
+            result = requests.post(api_full_path, data=json.dumps(settings),
+                                   auth=HTTPBasicAuth(self.settings.api_key, ''),
                                    headers={'Content-Type': 'application/json'})
         except requests.HTTPError:
             print('[HTTP POST] Error')
@@ -332,6 +333,87 @@ class StreakConnection:
         stage_edited = self.stage_get_specific_in_pipeline(pipeline_key, stage_edit_result['key'])
         return stage_edited
 
+    def field_get_all_in_pipeline(self, pipeline_key: str):
+        field_list = []
+        fields_data = self.get_api_data('pipelines/%s/fields' % pipeline_key)
+        for field_data in fields_data:
+            field_list.append(add_attributes(field_data, Field(self, pipeline_key)))
+        return field_list
+
+    def field_get_specific_in_pipeline(self, pipeline_key: str, field_key: str):
+        field_data = self.get_api_data('pipelines/%s/fields/%s' % (pipeline_key, field_key))
+
+        if 'success' in field_data.keys():
+            raise Exception(field_data['error'])
+
+        field = add_attributes(field_data, Field(self, pipeline_key))
+        return field
+
+    def field_create_in_pipeline(self, pipeline_key: str, field_params: dict):
+        field_data = self.put_api_data('pipelines/%s/fields' % pipeline_key, field_params)
+
+        if 'success' in field_data.keys():
+            raise Exception(field_data['error'])
+
+        new_field = self.field_get_specific_in_pipeline(pipeline_key, field_data['key'])
+
+        print('New Field created')
+        return new_field
+
+    def field_delete_in_pipeline(self, pipeline_key: str, field_key: str):
+        response_on_delete = self.delete_api_data('pipelines/%s/fields/%s' % (pipeline_key, field_key))
+
+        if not response_on_delete['success']:
+            raise Exception('Failed to delete Field')
+        else:
+            print('Field deleted')
+
+    def field_edit_in_pipeline(self, pipeline_key: str, field_key: str, field_params: dict):
+        field_edit_result = self.post_api_data('pipelines/%s/fields/%s' % (pipeline_key, field_key), field_params)
+
+        if 'success' in field_edit_result.keys():
+            raise Exception(field_edit_result['error'])
+
+        print('Field edited')
+        field_edited = self.field_get_specific_in_pipeline(pipeline_key, field_edit_result['key'])
+        return field_edited
+
+    def field_get_values_for_box(self, box_key: str):
+        field_list = []
+        fields_data = self.get_api_data('boxes/%s/fields' % box_key)
+        for field_data in fields_data:
+            field_list.append(add_attributes(field_data, Field(self, box_key)))
+        return field_list
+
+    def value_get_all_in_box(self, box_key: str):
+        value_list = []
+        values_data = self.get_api_data('boxes/%s/fields' % box_key)
+        for value_data in values_data:
+            # new_value = Value(self, box_key)
+            # new_value.key = value_data['key']
+            # if type(value_data['value']) ==
+            value_list.append(add_attributes(value_data, Value(self, box_key)))
+        return value_list
+
+    def value_get_specific_in_box(self, box_key: str, field_key: str):
+        value_data = self.get_api_data('boxes/%s/fields/%s' % (box_key, field_key))
+
+        if 'success' in value_data.keys():
+            raise Exception(value_data['error'])
+
+        value = add_attributes(value_data, Value(self, box_key))
+        return value
+
+    def value_edit_in_box(self, box_key: str, field_key: str, field_params: dict):
+        value_edit_result = self.post_api_data('boxes/%s/fields/%s' % (box_key, field_key), field_params)
+
+        if 'success' in value_edit_result.keys():
+            raise Exception(value_edit_result['error'])
+
+        print('Value edited')
+        value_edited = self.value_get_specific_in_box(box_key, value_edit_result['key'])
+        return value_edited
+
 
 class User:
     def __init__(self, streak_connection):
@@ -343,9 +425,9 @@ class User:
 
         # def reload(self):
         # print('Updating User...'),
-        #     self = self.streak_connection.user_get(self.userKey)
-        #     print('...done.')
-        #     return self
+        # self = self.streak_connection.user_get(self.userKey)
+        # print('...done.')
+        # return self
 
 
 class Pipeline:
@@ -362,9 +444,9 @@ class Pipeline:
 
         # def reload(self):
         # print('Updating Pipeline...'),
-        #     self = self.streak_connection.pipeline_get(self.pipelineKey)
-        #     print('...done.')
-        #     return self
+        # self = self.streak_connection.pipeline_get(self.pipelineKey)
+        # print('...done.')
+        # return self
 
 
 class Box:
@@ -391,6 +473,30 @@ class Stage:
 
     def delete_self(self):
         self.streak_connection.stage_delete_in_pipeline(self.pipeline_key, self.key)
+
+
+class Field:
+    def __init__(self, streak_connection, pipeline_key):
+        self.streak_connection = streak_connection
+        self.pipeline_key = pipeline_key
+        self.name = ''
+
+    def __repr__(self):
+        return '<Field: \'%s\'>' % self.name
+
+    def delete_self(self):
+        self.streak_connection.field_delete_in_pipeline(self.pipeline_key, self.key)
+
+
+class Value:
+    def __init__(self, streak_connection, box_key):
+        self.streak_connection = streak_connection
+        self.box_key = box_key
+        self.value = ''
+
+    def __repr__(self):
+        return "<Value: '%s'>" % self.value
+
 
 if __name__ == '__main__':
     pass
