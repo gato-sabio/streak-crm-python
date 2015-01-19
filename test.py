@@ -83,7 +83,7 @@ class TestCreateDeleteUpdatePipelines(unittest.TestCase):
         self.settings = {
             'name': 'test name',
             'description': 'test description',
-            'orgWide': True,
+            'orgWide': False,
             'fieldNames': 'name, date, memo',
             'fieldTypes': 'PERSON, DATE, TEXT_INPUT',
             'stageNames': 'Cold Call, Meeting, Contract'
@@ -158,7 +158,7 @@ class TestCreateDeleteUpdateBoxes(unittest.TestCase):
             {
                 'name': 'pipeline to test box',
                 'description': 'test description',
-                'orgWide': True,
+                'orgWide': False,
                 'fieldNames': 'name, date, memo',
                 'fieldTypes': 'PERSON, DATE, TEXT_INPUT',
                 'stageNames': 'Cold Call, Meeting, Contract'
@@ -222,7 +222,7 @@ class TestCreateDeleteUpdateStages(unittest.TestCase):
             {
                 'name': 'pipeline to test stages',
                 'description': 'test description',
-                'orgWide': True,
+                'orgWide': False,
                 'fieldNames': 'name, date, memo',
                 'fieldTypes': 'PERSON, DATE, TEXT_INPUT',
                 'stageNames': 'Cold Call, Meeting, Contract'
@@ -279,7 +279,7 @@ class TestGetGetAllEditValues(unittest.TestCase):
             {
                 'name': 'pipeline to test fields/values',
                 'description': 'test description',
-                'orgWide': True,
+                'orgWide': False,
                 'fieldNames': 'name, date, memo',
                 'fieldTypes': 'PERSON, DATE, TEXT_INPUT',
                 'stageNames': 'Cold Call, Meeting, Contract'
