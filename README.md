@@ -12,11 +12,14 @@ streak = StreakConnector(YOUR_API_KEY)
 # call methods
 
 pipelines_list = streak.pipeline_get_all()
-# <Pipeline: 'New clients'>, <Pipeline: 'Calls'>
+# [<Pipeline: 'New clients'>, <Pipeline: 'Calls'>]
 
 pipelne_key = pipelines_list[0].pipelineKey
 new_box = streak.box_create(pipeline_key, {'name': 'my new box'}
+# all methods return new instance and can be organized in chains
 box_list = streak.box_get_all_in_pipeline(pipeline_key)
-# <Box: my new box>
+# [<Box: my new box>]
+
+new_field = streak.field_create_in_pipeline(pipeline_key, {'name': 'comment'})
 
 ```
